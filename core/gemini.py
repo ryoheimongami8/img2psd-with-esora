@@ -14,6 +14,17 @@ GENERATE_CONTENT_URL = (
 )
 
 
+# The prompt text moved to core.prompts when a second backend appeared: it
+# describes the picture, not the provider. Re-exported so anything still reaching
+# for gemini.KEY_PRESETS keeps working.
+from .prompts import (  # noqa: F401,E402
+    KEY_PRESETS,
+    compose_prompt,
+    key_bg_instruction,
+    key_only_prompt,
+)
+
+
 def _rgb_to_png_b64(rgb: np.ndarray) -> str:
     bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
     ok, buf = cv2.imencode(".png", bgr)
