@@ -87,13 +87,15 @@ def _read_token_cache() -> dict:
 def _refresh_via_cli() -> None:
     """Make the CLI mint a fresh ID token and rewrite its cache.
 
-    Any authenticated command does it; ``auth status`` is the cheapest. The
-    refresh token lives in the OS keyring, which is precisely what this module
-    does not want to touch itself.
+    ``auth status`` only reads local state -- it reports ``expired`` without
+    doing anything about it. ``me`` is a real authenticated API call, so the
+    CLI refreshes the cached token as a side effect of making it. The refresh
+    token lives in the OS keyring, which is precisely what this module does
+    not want to touch itself.
     """
     try:
         subprocess.run(
-            ["esora-api", "--json", "auth", "status"],
+            ["esora-api", "--json", "me"],
             capture_output=True,
             timeout=60,
             check=False,
