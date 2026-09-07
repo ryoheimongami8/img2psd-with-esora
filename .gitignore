@@ -19,6 +19,10 @@ Thumbs.db
 .claude/
 
 !docs/pipeline_overview.png
+!docs/example_input.png
+!docs/example_lineart.png
+!docs/example_generated.png
+!docs/example_cutout.png
 
 # evaluation fixtures: ground-truth matte and real generated inputs
 !benchmark/*.png
