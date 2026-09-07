@@ -1,4 +1,4 @@
-# lineart2psd
+# img2psd
 
 画像を入れると、線画抽出 → AI着色 → 背景透過 → レイヤーPSD書き出しまで自動で行う。
 画像生成は社内 Esora API（既定 `azure_gpt_image_2` / GPT Image 2）。
