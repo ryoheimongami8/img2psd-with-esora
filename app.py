@@ -56,6 +56,10 @@ def _composite(layers: list) -> np.ndarray:
     """
     comp = np.full_like(layers[0]["rgb"], 255, np.uint8).astype(np.float32)
     for layer in layers:
+        # Hidden layers are excluded so the flattened preview matches what
+        # Photoshop shows with the file's own default visibility.
+        if layer.get("hidden"):
+            continue
         a = layer["alpha"].astype(np.float32)[..., None] / 255.0
         comp = layer["rgb"].astype(np.float32) * a + comp * (1 - a)
     return comp.astype(np.uint8)
@@ -301,17 +305,27 @@ def do_psd(square_rgb, alpha, gen_rgb, log_text, box=None, crop_on=True,
     t0 = time.time()
     sh, sw = square_rgb.shape[:2]
     cut = np.full((sh, sw), 255, np.uint8) if cut_alpha is None else cut_alpha
+    opaque = np.full((sh, sw), 255, np.uint8)
 
+    # Bottom to top. `source` is the uploaded image exactly as it went in, kept
+    # opaque so the file always carries the thing everything else was derived
+    # from; `original` is that same image with its background removed. `mask`
+    # ships hidden -- it is reference material, and an opaque greyscale plate at
+    # the top of the stack would be all anyone sees on open.
     # fg_rgb is the original with its edge cleaned against its own background, so it
     # replaces the original layer -- not the generated one, which is a different image.
-    layers = [{"name": "original",
-               "rgb": fg_rgb if fg_rgb is not None else square_rgb, "alpha": cut}]
+    layers = [{"name": "source", "rgb": square_rgb, "alpha": opaque}]
+    layers.append({"name": "original",
+                   "rgb": fg_rgb if fg_rgb is not None else square_rgb, "alpha": cut})
     if gen_rgb is not None:
         layers.append({"name": "generated", "rgb": gen_rgb, "alpha": cut})
     lineart_alpha = alpha if cut_alpha is None else (
         (alpha.astype(np.uint16) * cut.astype(np.uint16) // 255).astype(np.uint8))
     layers.append({"name": "lineart", "rgb": np.zeros((sh, sw, 3), np.uint8),
                    "alpha": lineart_alpha})
+    if cut_alpha is not None:
+        layers.append({"name": "mask", "rgb": cv2.cvtColor(cut, cv2.COLOR_GRAY2RGB),
+                       "alpha": opaque, "hidden": True})
 
     comp = _composite(layers)
     out_w, out_h = sw, sh
