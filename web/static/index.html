@@ -58,6 +58,16 @@
   }
   .definition { margin-top:56px; font-weight:700; font-size:25px; line-height:1.32; max-width:560px; }
 
+  .model-pick { margin-top:38px; }
+  .model-pick-label { font-weight:600; font-size:11.5px; letter-spacing:.5px; color:rgba(20,21,26,.6); text-transform:uppercase; margin-bottom:10px; }
+  .model-chips { display:flex; gap:10px; flex-wrap:wrap; }
+  .model-chip {
+    font-weight:700; font-size:13.5px; letter-spacing:.2px; padding:9px 18px; cursor:pointer;
+    border:1.5px solid rgba(20,21,26,.3); color:#14151a; background:transparent; user-select:none;
+  }
+  .model-chip.active { background:#14151a; color:#f2f1ed; border-color:#14151a; }
+  .model-chip-other { align-self:center; font-size:12px; font-weight:500; color:rgba(20,21,26,.45); }
+
   .adv-toggle { display:inline-block; margin-top:28px; font-weight:600; font-size:13px; border-bottom:1px solid rgba(20,21,26,.3); padding-bottom:2px; }
   .adv-panel {
     margin-top:26px; max-width:620px; border-top:1px solid rgba(20,21,26,.16); padding-top:22px;
@@ -209,6 +219,15 @@
       <div class="word-line1">IMG 2 LINE 2 RBG</div>
       <div class="box">ART</div>
       <div class="definition">to turn ink linework into a<br>colored, layered PSD.</div>
+
+      <div class="model-pick">
+        <div class="model-pick-label">生成モデル</div>
+        <div class="model-chips" id="model-chips">
+          <a class="model-chip" data-model="azure_gpt_image_2">GPT Image 2</a>
+          <a class="model-chip" data-model="gemini_nanobanana_2">Nanobanana 2</a>
+          <span class="model-chip-other" id="model-other" hidden></span>
+        </div>
+      </div>
 
       <a class="adv-toggle" id="adv-toggle">詳細設定 ▾</a>
       <div class="adv-panel" id="adv-panel" hidden>
@@ -381,6 +400,33 @@
     panel.hidden = !panel.hidden;
     $("adv-toggle").textContent = panel.hidden ? "詳細設定 ▾" : "詳細設定 ▴";
   });
+
+  // ---- model picker ----
+  // The two models people actually switch between get a chip on the first
+  // screen. The full catalogue stays in the panel below, and both drive the
+  // same <select>, which is still the single thing the request reads -- so a
+  // Seedream picked in the panel is shown here rather than silently replaced.
+  const modelSelect = $("opt-model");
+  const modelChips = [...document.querySelectorAll(".model-chip")];
+  function syncModelChips() {
+    let matched = false;
+    for (const chip of modelChips) {
+      const on = chip.dataset.model === modelSelect.value;
+      chip.classList.toggle("active", on);
+      matched = matched || on;
+    }
+    const other = $("model-other");
+    other.hidden = matched;
+    if (!matched) other.textContent = "詳細設定: " + modelSelect.options[modelSelect.selectedIndex].text;
+  }
+  for (const chip of modelChips) {
+    chip.addEventListener("click", () => {
+      modelSelect.value = chip.dataset.model;
+      syncModelChips();
+    });
+  }
+  modelSelect.addEventListener("change", syncModelChips);
+  syncModelChips();
 
   // ---- screens ----
   // Footer content is driven from here, in one place, so every path into a

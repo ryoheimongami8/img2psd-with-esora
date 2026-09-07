@@ -20,7 +20,7 @@ import numpy as np
 import cv2
 
 from core import imageops, lineart, svgout, esora, psd_writer
-from core import maskgen, fringe
+from core import maskgen, fringe, align
 
 OUT_DIR = "out"
 
@@ -118,13 +118,20 @@ def run_generate(session_id: str, model: str, prompt: str, use_lineart_ref: bool
     gen_rgb = esora.generate_image(model, prompt, square_rgb, lineart_ref)
     if gen_rgb.shape[:2] != square_rgb.shape[:2]:
         gen_rgb = imageops.to_square(gen_rgb, square_rgb.shape[0], "auto")
+    # The model redraws rather than repaints, so it hands back the same
+    # composition framed a few percent off. Every other layer in the PSD is
+    # derived from `square`, so this is the only one that can drift out of
+    # register -- see core/align.py.
+    gen_rgb, ainfo = align.to_reference(gen_rgb, square_rgb)
 
     os.makedirs(OUT_DIR, exist_ok=True)
     gen_path = os.path.join(OUT_DIR, f"{_ts()}_generated.png")
     cv2.imwrite(gen_path, cv2.cvtColor(gen_rgb, cv2.COLOR_RGB2BGR))
 
     st["gen_rgb"] = gen_rgb
-    return {"generated_path": gen_path, "elapsed": time.time() - t0}
+    return {"generated_path": gen_path, "elapsed": time.time() - t0,
+            "align": {"applied": ainfo["applied"], "scale": round(ainfo["scale"], 4),
+                      "dx": round(ainfo["tx"], 1), "dy": round(ainfo["ty"], 1)}}
 
 
 def run_keygen(session_id: str, model: str, key_color: str) -> dict:
