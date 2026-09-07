@@ -21,7 +21,7 @@ def _unicode_name_block(name: str) -> bytes:
     return b"8BIM" + b"luni" + struct.pack('>I', len(content)) + content
 
 
-def _layer_record_bytes(name: str, height: int, width: int) -> bytes:
+def _layer_record_bytes(name: str, height: int, width: int, hidden: bool = False) -> bytes:
     parts = []
     parts.append(struct.pack('>iiii', 0, 0, height, width))
     parts.append(struct.pack('>H', 4))
@@ -30,7 +30,10 @@ def _layer_record_bytes(name: str, height: int, width: int) -> bytes:
         parts.append(struct.pack('>hI', cid, ch_len))
     parts.append(b"8BIM")
     parts.append(b"norm")
-    parts.append(struct.pack('>BBBB', 255, 0, 0, 0))
+    # opacity, clipping, flags, filler. Flags bit 1 hides the layer: the mask
+    # plate travels with the file as reference, but an opaque greyscale sheet on
+    # top of the stack would be all anyone sees when they open it.
+    parts.append(struct.pack('>BBBB', 255, 0, 0x02 if hidden else 0x00, 0))
 
     pascal = _pascal_name(name)
     unicode_block = _unicode_name_block(name)
@@ -47,7 +50,8 @@ def _layer_record_bytes(name: str, height: int, width: int) -> bytes:
 def write_psd(path: str, width: int, height: int, layers: list, composite_rgb) -> None:
     n = len(layers)
 
-    layer_records = [_layer_record_bytes(l["name"], height, width) for l in layers]
+    layer_records = [_layer_record_bytes(l["name"], height, width, bool(l.get("hidden")))
+                     for l in layers]
     layer_records_total = sum(len(r) for r in layer_records)
 
     ch_size = 2 + height * width

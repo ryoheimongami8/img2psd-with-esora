@@ -35,8 +35,8 @@ from .prompts import (  # noqa: F401  re-exported: callers use esora.KEY_PRESETS
 #: Image models in the Esora catalogue, most useful first. Refresh with
 #: ``esora-api model list`` if the platform adds one.
 IMAGE_MODELS = [
-    ("azure_gpt_image_2", "GPT Image 2 (既定)"),
-    ("gemini_nanobanana_2", "Nanobanana 2"),
+    ("gemini_nanobanana_2", "Nanobanana 2 (既定)"),
+    ("azure_gpt_image_2", "GPT Image 2"),
     ("gemini_3_pro_image_preview", "Nanobanana Pro"),
     ("gemini_2_5_flash_image", "Nanobanana"),
     ("seedream_5_0_pro", "Seedream 5.0 Pro"),
