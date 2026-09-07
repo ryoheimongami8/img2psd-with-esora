@@ -10,10 +10,7 @@
 ## 準備（初回だけ）
 
 1. `setup.bat` をダブルクリック
-2. Esora CLI 未導入なら:
-   ```
-   uv tool install "D:\40_Esora\01_CLI\esora_api_cli-0.4.5-py3-none-any.whl"
-   ```
+2. Esora CLI を導入
 
 ## 使い方
 
