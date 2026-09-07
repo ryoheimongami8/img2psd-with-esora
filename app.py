@@ -7,7 +7,7 @@ import cv2
 import gradio as gr
 
 from core import imageops, lineart, svgout, esora, psd_writer
-from core import chroma, maskgen, fringe
+from core import chroma, maskgen, fringe, align
 
 OUT_DIR = "out"
 
@@ -125,6 +125,9 @@ def do_generate(square_rgb, alpha, model, prompt, use_lineart_ref, log_text):
         raise gr.Error(str(e))
     if gen_rgb.shape[:2] != square_rgb.shape[:2]:
         gen_rgb = imageops.to_square(gen_rgb, square_rgb.shape[0], "auto")
+    # The model reframes by a few percent; this is the only PSD layer not
+    # derived from square_rgb, so it is the only one that drifts. core/align.py
+    gen_rgb, ainfo = align.to_reference(gen_rgb, square_rgb)
 
     os.makedirs(OUT_DIR, exist_ok=True)
     ts = _ts()
@@ -132,7 +135,9 @@ def do_generate(square_rgb, alpha, model, prompt, use_lineart_ref, log_text):
     cv2.imwrite(gen_path, cv2.cvtColor(gen_rgb, cv2.COLOR_RGB2BGR))
 
     elapsed = time.time() - t0
-    line = f"② Esora生成 完了 ({elapsed:.1f}s) model={model} shape={gen_rgb.shape}"
+    fit = (f" 位置合わせ scale={ainfo['scale']:.3f} dx={ainfo['tx']:.0f} dy={ainfo['ty']:.0f}"
+           if ainfo["applied"] else " 位置合わせ なし")
+    line = f"② Esora生成 完了 ({elapsed:.1f}s) model={model} shape={gen_rgb.shape}{fit}"
     new_log = _append_log(log_text, line)
 
     return gen_rgb, gen_rgb, new_log
@@ -570,8 +575,28 @@ with gr.Blocks(title="lineart2psd") as demo:
     ).then(fn=lambda log: log, inputs=state_log, outputs=out_log)
 
 
-if __name__ == "__main__":
+def _open_when_ready(port: int, timeout: float = 30.0) -> None:
+    """Open the browser once the port actually answers.
+
+    Fired before uvicorn binds -- which is what a plain call next to it does --
+    the tab lands on a refused connection, and the user is left looking at a
+    browser error page for an app that came up fine a second later.
+    """
+    import socket
     import webbrowser
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        with socket.socket() as probe:
+            probe.settimeout(0.5)
+            if probe.connect_ex(("127.0.0.1", port)) == 0:
+                break
+        time.sleep(0.2)
+    webbrowser.open(f"http://127.0.0.1:{port}/")
+
+
+if __name__ == "__main__":
+    import threading
 
     import gradio
     import uvicorn
@@ -592,5 +617,5 @@ if __name__ == "__main__":
     # Suppressible so a scripted run (screenshots, smoke tests) does not steal
     # the desktop's focus with a window nobody asked for.
     if os.environ.get("IMG2PSD_NO_BROWSER") != "1":
-        webbrowser.open(f"http://127.0.0.1:{port}/")
+        threading.Thread(target=_open_when_ready, args=(port,), daemon=True).start()
     uvicorn.run(fastapi_app, host="127.0.0.1", port=port)
